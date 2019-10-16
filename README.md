@@ -12,3 +12,4 @@ A modern Android webview application.
 - Back button
 - Share dialog
 - Progress bar when loading the page 
+- Splash screen
