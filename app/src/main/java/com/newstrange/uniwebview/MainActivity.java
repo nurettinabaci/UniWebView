@@ -73,9 +73,7 @@ public class MainActivity extends AppCompatActivity {
         webView.getSettings().setDisplayZoomControls(false);
         webView.loadUrl(url);
 
-
         webView.setWebViewClient(new WebViewClient() {
-
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
@@ -178,15 +176,6 @@ public class MainActivity extends AppCompatActivity {
         shareIntent.putExtra(Intent.EXTRA_TEXT, url);
         Intent intent = Intent.createChooser(shareIntent, "Share");
         return shareIntent;
-    }
-
-    @Override
-    public void onBackPressed() {
-        if ((webView != null && webView.canGoBack())) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
-        }
     }
 
     @Override
