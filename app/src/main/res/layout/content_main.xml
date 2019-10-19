@@ -47,4 +47,5 @@
                 app:layout_constraintTop_toTopOf="parent"></WebView>
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
     </fragment>
+
 </androidx.constraintlayout.widget.ConstraintLayout>
