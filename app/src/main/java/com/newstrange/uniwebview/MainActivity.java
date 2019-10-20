@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -49,11 +50,11 @@ public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration mAppBarConfiguration;
     private ShareActionProvider mShareActionProvider;
-    private final String url = "http://www.ensonhaber.com";
+    private final String url = "https://www.youtube.com";
     private WebView webView;
     private ProgressBar progressBar_circle;
     private SwipeRefreshLayout swipeRefreshLayout;
-    private View mCustomVieww;
+    private View mCustomView;
     private MyWebChromeClient mWebChromeClient;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -152,16 +153,30 @@ public class MainActivity extends AppCompatActivity {
             @SuppressWarnings("deprecation")
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                view.loadUrl(url);
-                return true;
+                String mainURL = "youtube.com";
+                if (url != null && url.startsWith(mainURL)) {
+                    view.loadUrl(url);
+                    return true;
+                } else {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    view.getContext().startActivity(intent);
+                    return true;
+                }
             }
 
             @RequiresApi(android.os.Build.VERSION_CODES.N)
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                final String url = request.getUrl().toString();
-                view.loadUrl(url);
-                return false;
+                String mainURL = "youtube.com";
+                String url = request.getUrl().toString();
+                if (url != null && url.contains(mainURL)) {
+                    view.loadUrl(url);
+                    return true;
+                } else {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    view.getContext().startActivity(intent);
+                    return true;
+                }
             }
         });
 
@@ -181,13 +196,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public boolean inCustomView() {
-        return (mCustomVieww != null);
+        return (mCustomView != null);
     }
 
     public void hideCustomView() {
         mWebChromeClient.onHideCustomView();
     }
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -237,7 +251,6 @@ public class MainActivity extends AppCompatActivity {
         webView.restoreState(savedInstanceState);
     }
 
-
     @Override
     public boolean onSupportNavigateUp() {
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment);
@@ -249,12 +262,11 @@ public class MainActivity extends AppCompatActivity {
 
         private WebChromeClient.CustomViewCallback mCustomViewCallback;
         private View mVideoProgressView;
-        private View mCustomView;
+        private View myCustomView;
         private int mOriginalOrientation;
         private int mOriginalSystemUiVisibility;
 
-        MyWebChromeClient() {
-        }
+        MyWebChromeClient() {}
 
         @SuppressWarnings("deprecation")
         @Override
@@ -264,30 +276,29 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onShowCustomView(View paramView, WebChromeClient.CustomViewCallback paramCustomViewCallback) {
-            if (this.mCustomView != null) {
+            if (this.myCustomView != null) {
                 onHideCustomView();
                 return;
             }
-            this.mCustomView = paramView;
+            this.myCustomView = paramView;
             this.mOriginalSystemUiVisibility = getWindow().getDecorView().getSystemUiVisibility();
             this.mOriginalOrientation = getRequestedOrientation();
             this.mCustomViewCallback = paramCustomViewCallback;
-            ((FrameLayout) getWindow().getDecorView()).addView(this.mCustomView, new FrameLayout.LayoutParams(-1, -1));
+            ((FrameLayout) getWindow().getDecorView()).addView(this.myCustomView, new FrameLayout.LayoutParams(-1, -1));
             getWindow().getDecorView().setSystemUiVisibility(3846);
         }
 
         @Override
         public Bitmap getDefaultVideoPoster() {
-            if (mCustomView == null)
+            if (myCustomView == null)
                 return null;
-
             return BitmapFactory.decodeResource(getApplicationContext().getResources(), 2130837573);
         }
 
         @Override
         public void onHideCustomView() {
-            ((FrameLayout) getWindow().getDecorView()).removeView(this.mCustomView);
-            this.mCustomView = null;
+            ((FrameLayout) getWindow().getDecorView()).removeView(this.myCustomView);
+            this.myCustomView = null;
             getWindow().getDecorView().setSystemUiVisibility(this.mOriginalSystemUiVisibility);
             setRequestedOrientation(this.mOriginalOrientation);
             this.mCustomViewCallback.onCustomViewHidden();
@@ -311,6 +322,4 @@ public class MainActivity extends AppCompatActivity {
             return mVideoProgressView;
         }
     }
-
-
 }
