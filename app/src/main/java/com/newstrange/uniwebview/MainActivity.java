@@ -11,7 +11,6 @@ import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.view.View;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.widget.ShareActionProvider;
 import androidx.core.view.MenuItemCompat;
@@ -38,33 +37,24 @@ import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import butterknife.BindView;
-import butterknife.ButterKnife;
-
 public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration mAppBarConfiguration;
     private String url = "http://www.youtube.com";
     private ShareActionProvider mShareActionProvider;
-
-    @BindView(R.id.toolbar)
-    Toolbar toolbar;
-
-    @BindView(R.id.progress_circular)
-    ProgressBar progressBar;
-
-    @BindView(R.id.swipe_refresh_layout)
-    SwipeRefreshLayout swipeRefreshLayout;
-
-    @BindView(R.id.web_view)
-    WebView webView;
+    private WebView webView;
+    private ProgressBar progressBar_circle;
+    private SwipeRefreshLayout swipeRefreshLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        ButterKnife.bind(this);
-//        Toolbar toolbar = findViewById(R.id.toolbar);
+        webView = findViewById(R.id.web_view);
+        progressBar_circle = findViewById(R.id.progress_bar);
+        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
+
+        Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
         FloatingActionButton fab = findViewById(R.id.fab);
@@ -83,9 +73,7 @@ public class MainActivity extends AppCompatActivity {
         webView.getSettings().setDisplayZoomControls(false);
         webView.loadUrl(url);
 
-
         webView.setWebViewClient(new WebViewClient() {
-
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
@@ -94,8 +82,8 @@ public class MainActivity extends AppCompatActivity {
                 if (swipeRefreshLayout.isRefreshing())
                     swipeRefreshLayout.setRefreshing(false);
 
-                if (progressBar.getVisibility() == View.VISIBLE)
-                    progressBar.setVisibility(View.GONE);
+                if (progressBar_circle.getVisibility() == View.VISIBLE)
+                    progressBar_circle.setVisibility(View.GONE);
             }
 
             //For Android below API 23
@@ -152,8 +140,8 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
-                progressBar.setVisibility(View.VISIBLE);
-                progressBar.setProgress(newProgress);
+                progressBar_circle.setVisibility(View.VISIBLE);
+                progressBar_circle.setProgress(newProgress);
             }
 
         });
@@ -188,15 +176,6 @@ public class MainActivity extends AppCompatActivity {
         shareIntent.putExtra(Intent.EXTRA_TEXT, url);
         Intent intent = Intent.createChooser(shareIntent, "Share");
         return shareIntent;
-    }
-
-    @Override
-    public void onBackPressed() {
-        if ((webView != null && webView.canGoBack())) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
-        }
     }
 
     @Override
