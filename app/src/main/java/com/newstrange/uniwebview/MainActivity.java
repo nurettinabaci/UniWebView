@@ -1,16 +1,24 @@
 package com.newstrange.uniwebview;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Intent;
+import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.widget.ShareActionProvider;
 import androidx.core.view.MenuItemCompat;
@@ -34,27 +42,33 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration mAppBarConfiguration;
-    private String url = "http://www.youtube.com";
     private ShareActionProvider mShareActionProvider;
+    private final String url = "https://www.youtube.com";
     private WebView webView;
     private ProgressBar progressBar_circle;
     private SwipeRefreshLayout swipeRefreshLayout;
+    private View mCustomView;
+    private MyWebChromeClient mWebChromeClient;
 
+    @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         webView = findViewById(R.id.web_view);
+
         progressBar_circle = findViewById(R.id.progress_bar);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
 
-        Toolbar toolbar = findViewById(R.id.toolbar);
+        final Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
         FloatingActionButton fab = findViewById(R.id.fab);
@@ -66,12 +80,26 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        webView.getSettings().setJavaScriptEnabled(true);
+        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                webView.loadUrl(webView.getUrl());
+            }
+        });
 
         // enable pinch zoom in webview
-        webView.getSettings().setBuiltInZoomControls(true);
         webView.getSettings().setDisplayZoomControls(false);
+        webView.getSettings().setBuiltInZoomControls(true);
+
+        // enable scrollbar
+        webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+
         webView.loadUrl(url);
+
+        webView.getSettings().setJavaScriptEnabled(true);
+
+        mWebChromeClient = new MyWebChromeClient();
+        webView.setWebChromeClient(mWebChromeClient);
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -84,6 +112,8 @@ public class MainActivity extends AppCompatActivity {
 
                 if (progressBar_circle.getVisibility() == View.VISIBLE)
                     progressBar_circle.setVisibility(View.GONE);
+
+                toolbar.setTitle(webView.getTitle());
             }
 
             //For Android below API 23
@@ -123,29 +153,34 @@ public class MainActivity extends AppCompatActivity {
             @SuppressWarnings("deprecation")
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                view.loadUrl(url);
-                return true;
+                String mainURL = "youtube.com";
+                if (url != null && url.startsWith(mainURL)) {
+                    view.loadUrl(url);
+                    return true;
+                } else {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    view.getContext().startActivity(intent);
+                    return true;
+                }
             }
 
             @RequiresApi(android.os.Build.VERSION_CODES.N)
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                final String url = request.getUrl().toString();
-                view.loadUrl(url);
-                return false;
+                String mainURL = "youtube.com";
+                String url = request.getUrl().toString();
+                if (url != null && url.contains(mainURL)) {
+                    view.loadUrl(url);
+                    return true;
+                } else {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    view.getContext().startActivity(intent);
+                    return true;
+                }
             }
         });
 
-        webView.setWebChromeClient(new WebChromeClient() {
-
-            @Override
-            public void onProgressChanged(WebView view, int newProgress) {
-                progressBar_circle.setVisibility(View.VISIBLE);
-                progressBar_circle.setProgress(newProgress);
-            }
-
-        });
-
+        // navigation bar
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         NavigationView navigationView = findViewById(R.id.nav_view);
         // Passing each menu ID as a set of Ids because each
@@ -158,6 +193,14 @@ public class MainActivity extends AppCompatActivity {
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment);
         NavigationUI.setupActionBarWithNavController(this, navController, mAppBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
+    }
+
+    public boolean inCustomView() {
+        return (mCustomView != null);
+    }
+
+    public void hideCustomView() {
+        mWebChromeClient.onHideCustomView();
     }
 
     @Override
@@ -180,7 +223,10 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if ((keyCode == KeyEvent.KEYCODE_BACK) && webView != null && webView.canGoBack()) {
+        if (keyCode == KeyEvent.KEYCODE_BACK && inCustomView()) {
+            hideCustomView();
+            return true;
+        } else if ((keyCode == KeyEvent.KEYCODE_BACK) && webView != null && webView.canGoBack()) {
             webView.goBack();
             return true;
         } else
@@ -189,9 +235,91 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        webView.saveState(outState);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        webView.restoreState(savedInstanceState);
+    }
+
+    @Override
     public boolean onSupportNavigateUp() {
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment);
         return NavigationUI.navigateUp(navController, mAppBarConfiguration)
                 || super.onSupportNavigateUp();
+    }
+
+    class MyWebChromeClient extends WebChromeClient {
+
+        private WebChromeClient.CustomViewCallback mCustomViewCallback;
+        private View mVideoProgressView;
+        private View myCustomView;
+        private int mOriginalOrientation;
+        private int mOriginalSystemUiVisibility;
+
+        MyWebChromeClient() {}
+
+        @SuppressWarnings("deprecation")
+        @Override
+        public void onShowCustomView(View view, int requestedOrientation, CustomViewCallback callback) {
+            super.onShowCustomView(view, requestedOrientation, callback);
+        }
+
+        @Override
+        public void onShowCustomView(View paramView, WebChromeClient.CustomViewCallback paramCustomViewCallback) {
+            if (this.myCustomView != null) {
+                onHideCustomView();
+                return;
+            }
+            this.myCustomView = paramView;
+            this.mOriginalSystemUiVisibility = getWindow().getDecorView().getSystemUiVisibility();
+            this.mOriginalOrientation = getRequestedOrientation();
+            this.mCustomViewCallback = paramCustomViewCallback;
+            ((FrameLayout) getWindow().getDecorView()).addView(this.myCustomView, new FrameLayout.LayoutParams(-1, -1));
+            getWindow().getDecorView().setSystemUiVisibility(3846);
+        }
+
+        @Override
+        public Bitmap getDefaultVideoPoster() {
+            if (myCustomView == null)
+                return null;
+            return BitmapFactory.decodeResource(getApplicationContext().getResources(), 2130837573);
+        }
+
+        @Override
+        public void onHideCustomView() {
+            ((FrameLayout) getWindow().getDecorView()).removeView(this.myCustomView);
+            this.myCustomView = null;
+            getWindow().getDecorView().setSystemUiVisibility(this.mOriginalSystemUiVisibility);
+            setRequestedOrientation(this.mOriginalOrientation);
+            this.mCustomViewCallback.onCustomViewHidden();
+            this.mCustomViewCallback = null;
+        }
+
+        @Override
+        public void onProgressChanged(WebView view, int newProgress) {
+            progressBar_circle.setVisibility(View.VISIBLE);
+            progressBar_circle.setProgress(newProgress);
+        }
+
+        @Nullable
+        @Override
+        public View getVideoLoadingProgressView() {
+//                return super.getVideoLoadingProgressView();
+            if (mVideoProgressView == null) {
+                LayoutInflater inflater = LayoutInflater.from(MainActivity.this);
+                mVideoProgressView = inflater.inflate(R.layout.video_progress, null);
+            }
+            return mVideoProgressView;
+        }
     }
 }
