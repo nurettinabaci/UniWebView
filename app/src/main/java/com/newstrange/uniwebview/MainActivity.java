@@ -12,6 +12,7 @@ import android.os.Bundle;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -40,6 +41,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
@@ -54,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
     private WebView webView;
     private ProgressBar progressBar_circle;
     private SwipeRefreshLayout swipeRefreshLayout;
-    private View mCustomView;
+    private View mCustomView; // not handled
     private MyWebChromeClient mWebChromeClient;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -90,6 +92,12 @@ public class MainActivity extends AppCompatActivity {
         // enable pinch zoom in webview
         webView.getSettings().setDisplayZoomControls(false);
         webView.getSettings().setBuiltInZoomControls(true);
+        webView.getSettings().setLoadWithOverviewMode(true);
+        webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+
+
+        // to horizontal dynamics (e.g ensonhaber.com)
+        webView.getSettings().setDomStorageEnabled(true);
 
         // enable scrollbar
         webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
@@ -154,7 +162,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 String mainURL = "youtube.com";
-                if (url != null && url.startsWith(mainURL)) {
+                if (url != null && url.contains(mainURL)) {
                     view.loadUrl(url);
                     return true;
                 } else {
@@ -195,10 +203,12 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupWithNavController(navigationView, navController);
     }
 
+    // not using
     public boolean inCustomView() {
         return (mCustomView != null);
     }
 
+    //not using
     public void hideCustomView() {
         mWebChromeClient.onHideCustomView();
     }
@@ -224,13 +234,19 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK && inCustomView()) {
+            // TODO : (not working) fix here
+            // should  work when back pressed while fullscreen video running
             hideCustomView();
+            Log.i("BACK PRESSED", "HIDE VIDEO");
             return true;
         } else if ((keyCode == KeyEvent.KEYCODE_BACK) && webView != null && webView.canGoBack()) {
             webView.goBack();
+            Log.i("BACK PRESSED", "GET BACK");
             return true;
         } else
-            finish();
+            Log.i("BACK PRESSED", "FINISH");
+
+        finish();
         return super.onKeyDown(keyCode, event);
     }
 
@@ -290,6 +306,8 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public Bitmap getDefaultVideoPoster() {
+            Log.i("BACK PRESSED", "oKOKOKOKKOKOK getDefaultVideoPoster");
+
             if (myCustomView == null)
                 return null;
             return BitmapFactory.decodeResource(getApplicationContext().getResources(), 2130837573);
@@ -297,6 +315,8 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onHideCustomView() {
+            Log.i("BACK PRESSED", "oKOKOKOKKOKOK onHideCustomView");
+
             ((FrameLayout) getWindow().getDecorView()).removeView(this.myCustomView);
             this.myCustomView = null;
             getWindow().getDecorView().setSystemUiVisibility(this.mOriginalSystemUiVisibility);
@@ -314,6 +334,8 @@ public class MainActivity extends AppCompatActivity {
         @Nullable
         @Override
         public View getVideoLoadingProgressView() {
+            Log.i("BACK PRESSED", "oKOKOKOKKOKOK getVideoLoadingProgressView");
+
 //                return super.getVideoLoadingProgressView();
             if (mVideoProgressView == null) {
                 LayoutInflater inflater = LayoutInflater.from(MainActivity.this);
